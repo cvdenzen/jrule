@@ -1,13 +1,13 @@
 /**
  * Copyright (c) 2010-2022 Contributors to the openHAB project
- *
+ * <p>
  * See the NOTICE file(s) distributed with this work for additional
  * information.
- *
+ * <p>
  * This program and the accompanying materials are made available under the
  * terms of the Eclipse Public License 2.0 which is available at
  * http://www.eclipse.org/legal/epl-2.0
- *
+ * <p>
  * SPDX-License-Identifier: EPL-2.0
  */
 package org.openhab.automation.jrule.internal.engine;
@@ -49,6 +49,8 @@ import org.openhab.automation.jrule.internal.JRuleLog;
 import org.openhab.automation.jrule.internal.JRuleUtil;
 import org.openhab.automation.jrule.internal.cron.JRuleCronExpression;
 import org.openhab.automation.jrule.internal.events.JRuleEventSubscriber;
+import org.openhab.automation.jrule.items.JRuleDateTimeItem;
+import org.openhab.automation.jrule.items.JRuleItemRegistry;
 import org.openhab.automation.jrule.rules.JRule;
 import org.openhab.automation.jrule.rules.JRuleEvent;
 import org.openhab.automation.jrule.rules.JRuleLogName;
@@ -209,17 +211,16 @@ public class JRuleEngine implements PropertyChangeListener {
             // Loop for other ORs
             for (JRuleWhen jRuleWhen : jRuleWhens) {
                 JRuleLog.debug(logger, logName, "Processing jRule when: {}", jRuleWhen);
-                if (!jRuleWhen.item().isEmpty()) {
+                if (!jRuleWhen.item().isEmpty() && !"at".equals(jRuleWhen.trigger())) {
                     // JRuleWhen for an item
-
                     String itemPackage = config.getGeneratedItemPackage();
                     String prefix = config.getGeneratedItemPrefix();
-                    String itemClass = String.format("%s.%s%s", itemPackage, prefix, jRuleWhen.item());
+                    String itemClassAsString = String.format("%s.%s%s", itemPackage, prefix, jRuleWhen.item());
 
-                    JRuleLog.debug(logger, logName, "Got item class: {}", itemClass);
+                    JRuleLog.debug(logger, logName, "Got item class: {}", itemClassAsString);
                     JRuleLog.info(logger, logName, "Validating JRule item: {} trigger: {} ", jRuleWhen.item(),
                             jRuleWhen.trigger());
-                    addExecutionContext(jRule, logName, itemClass, jRuleName.value(), jRuleWhen.trigger(),
+                    addExecutionContext(jRule, logName, itemClassAsString, jRuleName.value(), jRuleWhen.trigger(),
                             jRuleWhen.from(), jRuleWhen.to(), jRuleWhen.update(), jRuleWhen.item(), method,
                             jRuleEventPresent, getDoubleFromAnnotation(jRuleWhen.lt()),
                             getDoubleFromAnnotation(jRuleWhen.lte()), getDoubleFromAnnotation(jRuleWhen.gt()),
@@ -228,6 +229,27 @@ public class JRuleEngine implements PropertyChangeListener {
                     itemNames.add(jRuleWhen.item());
 
                     ruleLoadingStatistics.addItemStateTrigger();
+                } else if ("at".equals(jRuleWhen.trigger()) && !jRuleWhen.item().isEmpty()) {
+                    // If trigger is "at", then item should be a datetime (?) item
+                    // Item must be datetime
+                    String itemPackage = config.getGeneratedItemPackage();
+                    String prefix = config.getGeneratedItemPrefix();
+                    String itemClassAsString = String.format("%s.%s%s", itemPackage, prefix, jRuleWhen.item());
+                    logger.info("Trigger=at, item is not null, itemClassAsString=" + itemClassAsString);
+                    logger.info("itemRegistry=" + itemRegistry);
+                    logger.info("jRuleWhen.item()=" + jRuleWhen.item());
+                    JRuleDateTimeItem jRuleDateTimeItem = JRuleItemRegistry.get(jRuleWhen.item(), JRuleDateTimeItem.class);
+                    logger.info("jRuleDateTimeItem=" + jRuleDateTimeItem);
+                    Class itemClass = jRuleDateTimeItem.getClass();
+                    if (itemClass.isInstance(Date.class)) {
+                        JRuleLog.info(logger, logName, "item is Date.class");
+                    } else {
+                        JRuleLog.info(logger, logName, "item is not Date.class, but it is " + jRuleDateTimeItem.getClass());
+                    }
+                    ZonedDateTime itemDate = jRuleDateTimeItem.getZonedDateTimeState();
+                    //
+                    JRuleLog.info(logger,logName,"itemDate={}",itemDate);
+                    createTimer(logName, Date.from( itemDate.toInstant()));
                 } else if (jRuleWhen.hours() != -1 || jRuleWhen.minutes() != -1 || jRuleWhen.seconds() != -1
                         || !jRuleWhen.cron().isEmpty()) {
                     // JRuleWhen for a time trigger
@@ -307,7 +329,7 @@ public class JRuleEngine implements PropertyChangeListener {
     }
 
     private synchronized void addTimedExecution(JRule jRule, String logName, String jRuleName, JRuleWhen jRuleWhen,
-            Method method, boolean jRuleEventPresent, JRulePrecondition[] preconditions) {
+                                                Method method, boolean jRuleEventPresent, JRulePrecondition[] preconditions) {
         CompletableFuture<Void> future = (!jRuleWhen.cron().isEmpty()) ? createTimer(logName, jRuleWhen.cron())
                 : createTimer(logName, jRuleWhen.hours(), jRuleWhen.minutes(), jRuleWhen.seconds());
         if (future != null) {
@@ -334,8 +356,8 @@ public class JRuleEngine implements PropertyChangeListener {
     }
 
     private void addExecutionContext(JRule jRule, String logName, String itemClass, String ruleName, String trigger,
-            String from, String to, String update, String itemName, Method method, boolean eventParameterPresent,
-            Double lt, Double lte, Double gt, Double gte, String eq, String neq, JRulePrecondition[] preconditions) {
+                                     String from, String to, String update, String itemName, Method method, boolean eventParameterPresent,
+                                     Double lt, Double lte, Double gt, Double gte, String eq, String neq, JRulePrecondition[] preconditions) {
         List<JRuleExecutionContext> contextList = itemToExecutionContexts.computeIfAbsent(itemName,
                 k -> new ArrayList<>());
         final JRuleExecutionContext context = new JRuleExecutionContext(jRule, logName, trigger, from, to, update,
@@ -345,7 +367,7 @@ public class JRuleEngine implements PropertyChangeListener {
     }
 
     private void addChannelExecutionContext(JRule jRule, String logName, String channel, String ruleName, Method method,
-            boolean eventParameterPresent, String eq, String neq, JRulePrecondition[] preconditions) {
+                                            boolean eventParameterPresent, String eq, String neq, JRulePrecondition[] preconditions) {
         List<JRuleExecutionContext> contextList = channelToExecutionContexts.computeIfAbsent(channel,
                 k -> new ArrayList<>());
         final JRuleExecutionContext context = new JRuleExecutionContext(jRule, logName, null, null, null, null,
@@ -438,7 +460,7 @@ public class JRuleEngine implements PropertyChangeListener {
     }
 
     private Boolean evaluateComparatorParameters(Double gt, Double gte, Double lt, Double lte, String eq, String neq,
-            String stateValue) {
+                                                 String stateValue) {
         if (eq != null) {
             return stateValue.equals(eq);
         } else if (neq != null) {
