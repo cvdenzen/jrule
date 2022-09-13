@@ -21,6 +21,7 @@ public class JRuleLoadingStatistics {
     private int numChannelTriggers;
     private int numItemStateTriggers;
     private int numTimedTriggers;
+    private int numAtTimedTriggers;
 
     private int numRuleClasses;
 
@@ -50,6 +51,8 @@ public class JRuleLoadingStatistics {
     public void addRuleMethod() {
         numRuleMethods++;
     }
+
+    public void addAtTimedTrigger() { numAtTimedTriggers++; }
 
     @Override
     public String toString() {
@@ -81,4 +84,5 @@ public class JRuleLoadingStatistics {
 
         return b.toString();
     }
+
 }

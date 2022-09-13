@@ -21,7 +21,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
+import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -241,15 +243,12 @@ public class JRuleEngine implements PropertyChangeListener {
                     JRuleDateTimeItem jRuleDateTimeItem = JRuleItemRegistry.get(jRuleWhen.item(), JRuleDateTimeItem.class);
                     logger.info("jRuleDateTimeItem=" + jRuleDateTimeItem);
                     Class itemClass = jRuleDateTimeItem.getClass();
-                    if (itemClass.isInstance(Date.class)) {
-                        JRuleLog.info(logger, logName, "item is Date.class");
-                    } else {
-                        JRuleLog.info(logger, logName, "item is not Date.class, but it is " + jRuleDateTimeItem.getClass());
-                    }
                     ZonedDateTime itemDate = jRuleDateTimeItem.getZonedDateTimeState();
                     //
                     JRuleLog.info(logger,logName,"itemDate={}",itemDate);
+                    JRuleLog.info(logger,logName,"itemDate={}",itemDate.format(DateTimeFormatter.BASIC_ISO_DATE));
                     createTimer(logName, Date.from( itemDate.toInstant()));
+                    ruleLoadingStatistics.addAtTimedTrigger();
                 } else if (jRuleWhen.hours() != -1 || jRuleWhen.minutes() != -1 || jRuleWhen.seconds() != -1
                         || !jRuleWhen.cron().isEmpty()) {
                     // JRuleWhen for a time trigger
