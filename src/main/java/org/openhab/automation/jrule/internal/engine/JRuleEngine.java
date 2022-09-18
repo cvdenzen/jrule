@@ -59,6 +59,7 @@ import org.openhab.automation.jrule.rules.JRuleLogName;
 import org.openhab.automation.jrule.rules.JRuleName;
 import org.openhab.automation.jrule.rules.JRulePrecondition;
 import org.openhab.automation.jrule.rules.JRuleWhen;
+import org.openhab.automation.jrule.trigger.JRuleDateTimeTrigger;
 import org.openhab.core.common.ThreadPoolManager;
 import org.openhab.core.events.Event;
 import org.openhab.core.items.Item;
@@ -213,7 +214,7 @@ public class JRuleEngine implements PropertyChangeListener {
             // Loop for other ORs
             for (JRuleWhen jRuleWhen : jRuleWhens) {
                 JRuleLog.debug(logger, logName, "Processing jRule when: {}", jRuleWhen);
-                if (!jRuleWhen.item().isEmpty() && !"at".equals(jRuleWhen.trigger())) {
+                if (!jRuleWhen.item().isEmpty() && !JRuleDateTimeTrigger.TRIGGER_AT.equals(jRuleWhen.trigger())) {
                     // JRuleWhen for an item
                     String itemPackage = config.getGeneratedItemPackage();
                     String prefix = config.getGeneratedItemPrefix();
@@ -231,9 +232,8 @@ public class JRuleEngine implements PropertyChangeListener {
                     itemNames.add(jRuleWhen.item());
 
                     ruleLoadingStatistics.addItemStateTrigger();
-                } else if ("at".equals(jRuleWhen.trigger()) && !jRuleWhen.item().isEmpty()) {
+                } else if ((JRuleDateTimeTrigger.TRIGGER_AT).equals(jRuleWhen.trigger()) && !jRuleWhen.item().isEmpty()) {
                     // If trigger is "at", then item should be a datetime (?) item
-                    // Item must be datetime
                     String itemPackage = config.getGeneratedItemPackage();
                     String prefix = config.getGeneratedItemPrefix();
                     String itemClassAsString = String.format("%s.%s%s", itemPackage, prefix, jRuleWhen.item());
